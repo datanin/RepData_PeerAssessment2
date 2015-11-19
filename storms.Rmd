@@ -1,0 +1,88 @@
+---
+title: "Storm Research in the US"
+author: "Jan Dombrowicz"
+date: "15. November 2015"
+output: html_document
+---
+### Reproducible Research Project 2, Coursera, Johns Hopkins University
+
+U.S. National Oceanic and Atmospheric Administration's (NOAA) Storm Database (1950-2011)
+
+Data repository
+
+[Storm Data (47Mb)](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2)
+
+Documentation
+
+[National Weather Service Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)
+
+[National Climatic Data Center Storm Events FAQ](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)
+
+
+### Synonpsis
+In this report, we aim to analyze the impact of different weather events on public health and economy based on the storm database collected from the U.S. National Oceanic and Atmospheric Administration's (NOAA) from 1950 - 2011. We will use the estimates of fatalities, injuries, property and crop damage to decide which types of event are most harmful to the population health and economy. From these data, we found that excessive heat and tornado are most harmful with respect to population health, while flood, drought, and hurricane/typhoon have the greatest economic consequences.
+
+### Basic settings
+Loading libraries.
+
+```{r}
+echo = TRUE  # Always make code visible
+suppressMessages(library(dplyr))
+library(ggplot2)
+suppressMessages(library(R.utils))
+library(gridExtra)
+```
+
+### Data Processing
+Load and check the data
+
+```{r}
+data <- read.csv("repdata_data_StormData.csv")
+dim(data)
+```
+
+### Prepare Data
+As you can see with unique(EVTYPE), there are several ways in which the tornado occurse. Lower the Eventtype (EVTYPE) as the first step for homogen the data. In the next step we slice the year when the event occurse to examine most frequent years.
+
+```{r}
+data$EVTYPE <- tolower(data$EVTYPE)
+data$EVTYPE <- factor(data$EVTYPE)
+data$YEAR <- as.numeric(format(as.Date(data$BGN_DATE, format = "%m/%d/%Y %H:%M:%S"), "%Y"))
+```
+
+Plot a histogramm of events per year to find out which years are most important and complete.
+
+```{r}
+hist(data$YEAR, breaks = 30, xlab = "Year", main = "Events per Year")
+dataSlice <- data[data$YEAR >= 1995, ]
+```
+The histogramm shows us, that we can filter the data and use only the observations from 1995 - 2011. These are mostly complete.
+
+```{r}
+dataGrouped <- group_by(dataSlice, EVTYPE)
+fatalSum <- summarise(dataGrouped, FATALITIES=sum(FATALITIES))
+fatalHead <- head(arrange(fatalSum, desc(FATALITIES)), 12)
+
+
+injurySum <- summarise(dataGrouped, INJURIES=sum(INJURIES))
+injuryHead <- head(arrange(injurySum, desc(INJURIES)), 12)
+
+fatalPlot <- qplot(EVTYPE, data = fatalHead, weight = FATALITIES, geom = "bar", binwidth = 1, fill=I("darkblue")) + 
+  scale_y_continuous("Number of Fatalities") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + xlab("Severe Weather Type") + 
+  ggtitle("Total Fatalities by Severe Weather\n Events in the U.S.\n from 1995 - 2011")
+
+injuryPlot <- qplot(EVTYPE, data = injuryHead, weight = INJURIES, geom = "bar", binwidth = 1, fill=I("darkblue")) + 
+  scale_y_continuous("Number of Injuries") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + xlab("Severe Weather Type") + 
+  ggtitle("Total Injuries by Severe Weather\n Events in the U.S.\n from 1995 - 2011")
+
+grid.arrange(fatalPlot, injuryPlot, ncol = 2)
+```
+
+### Find events that caused most death and injury
+
+Based on the above histogram, we see that the number of events tracked starts to significantly increase around 1995. So, we use the subset of the data from 1990 to 2011 to get most out of good records.
+
+
+### Results
